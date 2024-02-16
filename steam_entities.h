@@ -20,6 +20,7 @@ namespace tc
         std::string installed_dir_;
         // 目录下所有的exe，ue的在内部文件夹中
         std::vector<std::string> exes_;
+        std::vector<std::string> exe_names_;
         // 查注册表能知道是否已经运行了
         bool is_running_{};
         // 查注册表能知道是否已经安装了
@@ -29,7 +30,7 @@ namespace tc
 
     public:
 
-        std::string Dump() const {
+        [[nodiscard]] std::string Dump() const {
             std::stringstream ss;
             ss << "name: " << name_ << std::endl;
             ss << "app id: " << app_id_ << std::endl;

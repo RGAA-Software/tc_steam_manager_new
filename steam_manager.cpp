@@ -328,7 +328,9 @@ namespace tc
                 steam_app.app_id_ = app.app_id_;
                 steam_app.name_ = objs.attribs["name"];
                 steam_app.installed_dir_ = installed_dir;
+                steam_app.steam_url_ = std::format("steam://rungameid/{}", app.app_id_);
 
+                LOGI("will find: {}, name: {}", app.app_id_, steam_app.name_);
                 if (!FindRunningExes(steam_app)) {
                     continue;
                 }
@@ -354,16 +356,20 @@ namespace tc
                 continue;
             }
 
-            auto path = iter->path().string();
-            StringExt::Replace(path, "\\", "/");
-            auto suffix = FileExt::GetFileSuffix(path);
+            auto path = iter->path().wstring();
+            auto u8path = StringExt::ToUTF8(path);
+            StringExt::Replace(u8path, "\\", "/");
+            auto suffix = FileExt::GetFileSuffix(u8path);
             if (suffix.empty()) {
                 continue;
             }
             bool is_exe = StringExt::ToLowerCpy(suffix) == "exe";
-            bool ignore_by_policy = IgnoreByPolicy(path);
+            bool ignore_by_policy = IgnoreByPolicy(u8path);
             if (is_exe && !ignore_by_policy) {
-                app.exes_.push_back(path);
+                app.exes_.push_back(u8path);
+                std::cout << "find exe: " << u8path << std::endl;
+                auto exe_name = FileExt::GetFileNameFromPath(u8path);
+                app.exe_names_.push_back(exe_name);
                 find_exe = true;
             }
         }
