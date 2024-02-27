@@ -295,7 +295,7 @@ namespace tc
                 auto app_cfg = steam_apps_path + "/appmanifest_" + std::to_string(app.app_id_) + ".acf";
                 auto u8_cfg_path = std::filesystem::u8path(app_cfg);
                 if (!std::filesystem::exists(u8_cfg_path)) {
-                    LOGE("Path not exist: {}", app_cfg);
+                    //LOGE("Path not exist: {}", app_cfg);
                     continue;
                 }
 
