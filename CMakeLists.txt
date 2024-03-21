@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(tc_steam_manager)
+project(tc_steam_manager_new)
 
 set(CMAKE_CXX_STANDARD 20)
 
