@@ -3,13 +3,13 @@
 //
 
 #include "steam_manager.h"
-#include "tc_common/log.h"
-#include "tc_common/task_runtime.h"
-#include "tc_common/http_client.h"
-#include "tc_common/thread.h"
-#include "tc_common/vdf_parser.hpp"
-#include "tc_common/string_ext.h"
-#include "tc_common/file_ext.h"
+#include "tc_common_new/log.h"
+#include "tc_common_new/task_runtime.h"
+#include "tc_common_new/http_client.h"
+#include "tc_common_new/thread.h"
+#include "tc_common_new/vdf_parser.hpp"
+#include "tc_common_new/string_ext.h"
+#include "tc_common_new/file_ext.h"
 
 #include <map>
 #include <ranges>

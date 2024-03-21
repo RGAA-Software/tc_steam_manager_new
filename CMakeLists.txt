@@ -13,7 +13,7 @@ if (WIN32)
         steam_manager.cpp
     )
     add_library(${PROJECT_NAME} ${SRCS})
-    target_link_libraries(${PROJECT_NAME} tc_common)
+    target_link_libraries(${PROJECT_NAME} tc_common_new)
 
 elseif (APPLE)
 
