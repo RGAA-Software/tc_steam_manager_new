@@ -36,6 +36,8 @@ namespace tc
         std::string steam_url_{};
         // cover url
         std::string cover_url_;
+        // cover's name
+        std::string cover_name_;
 
     public:
 

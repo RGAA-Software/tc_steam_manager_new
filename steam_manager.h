@@ -32,6 +32,8 @@ namespace tc
         std::vector<std::shared_ptr<SteamApp>> GetInstalledGames();
         void DumpGamesInfo();
         void UpdateAppDetails();
+        std::string GetSteamInstalledPath();
+        std::string GetSteamImageCachePath();
 
     private:
         std::string ScanInstalledSteamPath();

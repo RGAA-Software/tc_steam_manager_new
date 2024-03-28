@@ -415,16 +415,18 @@ namespace tc
         }
 
         for (auto& game : games_) {
-            std::string file_prefix = std::format("{}_header", game->app_id_);
+            std::string file_prefix = std::format("{}_library_600", game->app_id_);
             //2389120_library_header
             std::string file_prefix_2 = std::format("{}_library_header", game->app_id_).c_str();
             for (auto& file_name : cached_file_names) {
                 if (file_name.find(file_prefix) != std::string::npos) {
                     game->cover_url_ = file_name;
+                    game->cover_name_ = FileExt::GetFileNameFromPath(file_name);
                     break;
                 }
                 if (file_name.find(file_prefix_2) != std::string::npos) {
                     game->cover_url_ = file_name;
+                    game->cover_name_ = FileExt::GetFileNameFromPath(file_name);
                     break;
                 }
             }
@@ -443,6 +445,14 @@ namespace tc
             }
         }));
 #endif
+    }
+
+    std::string SteamManager::GetSteamInstalledPath() {
+        return installed_steam_path_;
+    }
+
+    std::string SteamManager::GetSteamImageCachePath() {
+        return installed_steam_path_ + "/appcache/librarycache";
     }
 
 }
