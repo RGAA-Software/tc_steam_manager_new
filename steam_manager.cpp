@@ -17,17 +17,25 @@
 #include <boost/filesystem.hpp>
 #include <filesystem>
 
+#include "steam_entities.h"
+#include "steam_api.h"
+
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 16383
+
+namespace fs = std::filesystem;;
 
 namespace tc
 {
 
-    std::shared_ptr<SteamManager> SteamManager::Make() {
-        return std::make_shared<SteamManager>();
+    std::shared_ptr<SteamManager> SteamManager::Make(const std::shared_ptr<TaskRuntime>& rt) {
+        return std::make_shared<SteamManager>(rt);
     }
 
-    SteamManager::SteamManager() = default;
+    SteamManager::SteamManager(const std::shared_ptr<TaskRuntime>& rt) {
+        task_runtime_ = rt;
+    }
+
     SteamManager::~SteamManager() = default;
 
     void SteamManager::QueryInstalledApps(HKEY hKey) {
@@ -84,9 +92,9 @@ namespace tc
 
                 if (retCode == ERROR_SUCCESS) {
 
-                    RegAppInfo reg_app_info;
-                    reg_app_info.app_id_ = std::atoi(StringExt::ToUTF8(std::wstring(achKey)).c_str());
-                    LOGI("Reg: id:{}", reg_app_info.app_id_);
+                    auto reg_app_info = RegAppInfo::Make();
+                    reg_app_info->app_id_ = std::atoi(StringExt::ToUTF8(std::wstring(achKey)).c_str());
+                    LOGI("Reg: id:{}", reg_app_info->app_id_);
 
                     std::wstring name;
                     auto innerSubKey = steam_app_base_path_ + L"\\" + std::wstring(achKey);
@@ -110,7 +118,7 @@ namespace tc
                             if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data,
                                              &dataSize) == ERROR_SUCCESS) {
                                 std::wcout << "Installed : " << data << std::endl;
-                                reg_app_info.installed_ = data;
+                                reg_app_info->installed_ = data;
                             }
                         }
 
@@ -121,7 +129,7 @@ namespace tc
                             if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data,
                                              &dataSize) == ERROR_SUCCESS) {
                                 std::wcout << "Running : " << data << std::endl;
-                                reg_app_info.running_ = data;
+                                reg_app_info->running_ = data;
                             }
                         }
 
@@ -136,7 +144,7 @@ namespace tc
                         }
                         RegCloseKey(innerKey);
 
-                        if (reg_app_info.installed_) {
+                        if (reg_app_info->installed_) {
                             reg_apps_info_.push_back(reg_app_info);
                         }
                     }
@@ -187,7 +195,7 @@ namespace tc
         LOGI("steam path: {}", installed_steam_path_);
         LOGI("all steam apps size: {}", games_.size());
         for (auto& game : games_) {
-            LOGI("game: \n{}", game.Dump());
+            LOGI("game: \n{}", game->Dump());
         }
         return true;
     }
@@ -210,14 +218,14 @@ namespace tc
         return "";
     }
 
-    std::vector<SteamApp> SteamManager::GetInstalledGames() {
+    std::vector<SteamAppPtr> SteamManager::GetInstalledGames() {
         return games_;
     }
 
     void SteamManager::DumpGamesInfo() {
         LOGI("Total games: {}", games_.size());
         for (auto& game : games_) {
-            LOGI("Game: {}", game.Dump());
+            LOGI("Game: {}", game->Dump());
         }
     }
 
@@ -255,8 +263,8 @@ namespace tc
             //
             StringExt::Replace(path, "\\", "/");
 
-            InstalledFolder installed_folder;
-            installed_folder.path_ = path;
+            auto installed_folder = InstalledFolder::Make();
+            installed_folder->path_ = path;
 
             // apps
 #if 0
@@ -275,7 +283,7 @@ namespace tc
 #endif
             // 读取这个地方不准，把注册表里的都拿出来，如果安装在不同磁盘，每个磁盘都把所有的app文件夹都检测一次
             // 最后只保留检测到的就可以
-            installed_folder.app_id_value_.insert(installed_folder.app_id_value_.begin(), reg_apps_info_.begin(), reg_apps_info_.end());
+            installed_folder->app_id_value_.insert(installed_folder->app_id_value_.begin(), reg_apps_info_.begin(), reg_apps_info_.end());
             installed_folders_.push_back(installed_folder);
         }
 
@@ -286,13 +294,13 @@ namespace tc
 
     void SteamManager::ParseConfigForEachGame() {
         for (const auto& folder : installed_folders_) {
-            if (folder.path_.empty() || folder.app_id_value_.empty()) {
+            if (folder->path_.empty() || folder->app_id_value_.empty()) {
                 continue;
             }
 
-            auto steam_apps_path = folder.path_ + "/steamapps";
-            for (const auto& app : folder.app_id_value_) {
-                auto app_cfg = steam_apps_path + "/appmanifest_" + std::to_string(app.app_id_) + ".acf";
+            auto steam_apps_path = folder->path_ + "/steamapps";
+            for (const auto& app : folder->app_id_value_) {
+                auto app_cfg = steam_apps_path + "/appmanifest_" + std::to_string(app->app_id_) + ".acf";
                 auto u8_cfg_path = std::filesystem::u8path(app_cfg);
                 if (!std::filesystem::exists(u8_cfg_path)) {
                     //LOGE("Path not exist: {}", app_cfg);
@@ -324,13 +332,13 @@ namespace tc
                 auto installed_dir = steam_apps_path;
                 installed_dir.append("/common/").append(installed_dir_name);
 
-                SteamApp steam_app;
-                steam_app.app_id_ = app.app_id_;
-                steam_app.name_ = objs.attribs["name"];
-                steam_app.installed_dir_ = installed_dir;
-                steam_app.steam_url_ = std::format("steam://rungameid/{}", app.app_id_);
+                auto steam_app = SteamApp::Make();
+                steam_app->app_id_ = app->app_id_;
+                steam_app->name_ = objs.attribs["name"];
+                steam_app->installed_dir_ = installed_dir;
+                steam_app->steam_url_ = std::format("steam://rungameid/{}", app->app_id_);
 
-                LOGI("will find: {}, name: {}", app.app_id_, steam_app.name_);
+                LOGI("will find: {}, name: {}", app->app_id_, steam_app->name_);
                 if (!FindRunningExes(steam_app)) {
                     continue;
                 }
@@ -342,10 +350,10 @@ namespace tc
         LOGI("---Parse completed....");
     }
 
-    bool SteamManager::FindRunningExes(SteamApp& app) {
-        auto app_path = std::filesystem::u8path(app.installed_dir_);
+    bool SteamManager::FindRunningExes(const SteamAppPtr& app) {
+        auto app_path = std::filesystem::u8path(app->installed_dir_);
         if (!std::filesystem::exists(app_path)) {
-            LOGE("folder not exist: {}", app.installed_dir_);
+            LOGE("folder not exist: {}", app->installed_dir_);
             return false;
         }
 
@@ -366,10 +374,10 @@ namespace tc
             bool is_exe = StringExt::ToLowerCpy(suffix) == "exe";
             bool ignore_by_policy = IgnoreByPolicy(u8path);
             if (is_exe && !ignore_by_policy) {
-                app.exes_.push_back(u8path);
+                app->exes_.push_back(u8path);
                 std::cout << "find exe: " << u8path << std::endl;
                 auto exe_name = FileExt::GetFileNameFromPath(u8path);
-                app.exe_names_.push_back(exe_name);
+                app->exe_names_.push_back(exe_name);
                 find_exe = true;
             }
         }
@@ -388,31 +396,35 @@ namespace tc
     }
 
     void SteamManager::ScanHeaderImageInAppCache() {
-#if 0
-        QString library_cache_path = installed_steam_path_ + "/appcache/librarycache";
-        QDir dir(library_cache_path);
-        if (!dir.exists()) {
-            LOGE("Cache not exist:{}", library_cache_path.toStdString());
+#if 1
+        std::string library_cache_path = installed_steam_path_ + "/appcache/librarycache";
+        if (!std::filesystem::exists(library_cache_path)) {
+            LOGE("Cache not exist:{}", library_cache_path);
             return;
         }
 
-        dir.setFilter(QDir::Files);
-        QDirIterator iterator(dir);
-        std::vector<QString> cached_file_names;
-        while (iterator.hasNext()) {
-            auto file_name = iterator.fileName();
-            iterator.next();
-            if (file_name.isEmpty()) {
+        std::vector<std::string> cached_file_names;
+        for (const auto& entry : fs::directory_iterator(library_cache_path)) {
+            const auto& path = entry.path();
+            if (!entry.is_regular_file()) {
                 continue;
             }
-            cached_file_names.push_back(file_name);
+
+            LOGI("path: {}", path.string());
+            cached_file_names.push_back(path.string());
         }
 
         for (auto& game : games_) {
-            QString file_prefix = std::format("{}_header", game.app_id_).c_str();
+            std::string file_prefix = std::format("{}_header", game->app_id_);
+            //2389120_library_header
+            std::string file_prefix_2 = std::format("{}_library_header", game->app_id_).c_str();
             for (auto& file_name : cached_file_names) {
-                if (file_name.startsWith(file_prefix)) {
-                    game.cover_url_ = library_cache_path + "/" + file_name;
+                if (file_name.find(file_prefix) != std::string::npos) {
+                    game->cover_url_ = file_name;
+                    break;
+                }
+                if (file_name.find(file_prefix_2) != std::string::npos) {
+                    game->cover_url_ = file_name;
                     break;
                 }
             }
@@ -421,13 +433,13 @@ namespace tc
     }
 
     void SteamManager::UpdateAppDetails() {
-#if 0
-        context_->GetTaskRuntime()->Post(SimpleThreadTask::Make([=, this]() {
+#if 1
+        task_runtime_->Post(SimpleThreadTask::Make([=, this]() {
             for (auto& game : games_) {
-                auto path = kApiAppDetails + "?appids=" + std::to_string(game.app_id_);
+                auto path = kApiAppDetails + "?appids=" + std::to_string(game->app_id_);
                 auto client = HttpClient::MakeSSL(kApiBase, path);
                 auto resp = client->Request({});
-                //LOGI("resp : {} {}", resp.status, resp.body);
+                LOGI("resp : {} {}", resp.status, resp.body);
             }
         }));
 #endif

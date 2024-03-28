@@ -6,11 +6,18 @@
 #define TC_APPLICATION_STEAM_ENTITIES_H
 
 #include <sstream>
+#include <memory>
+#include <vector>
 
 namespace tc
 {
 
     class SteamApp {
+    public:
+        static std::shared_ptr<SteamApp> Make() {
+            return std::make_shared<SteamApp>();
+        }
+
     public:
         // steam app的id
         int app_id_{};
@@ -27,6 +34,8 @@ namespace tc
         bool is_installed_{};
         // 拼接的steam 快捷方式
         std::string steam_url_{};
+        // cover url
+        std::string cover_url_;
 
     public:
 
@@ -42,6 +51,33 @@ namespace tc
             return ss.str();
         }
     };
+    using SteamAppPtr = std::shared_ptr<SteamApp>;
+
+    // 安装的应用使用信息
+    class RegAppInfo{
+    public:
+        static std::shared_ptr<RegAppInfo> Make() {
+            return std::make_shared<RegAppInfo>();
+        }
+    public:
+        int app_id_;
+        bool installed_;
+        bool running_;
+        // 应该是app占用的空间大小
+        int app_size_;
+    };
+    using RegAppInfoPtr = std::shared_ptr<RegAppInfo>;
+
+    class InstalledFolder {
+    public:
+        static std::shared_ptr<InstalledFolder> Make() {
+            return std::make_shared<InstalledFolder>();
+        }
+    public:
+        std::string path_;
+        std::vector<RegAppInfoPtr> app_id_value_;
+    };
+    using InstalledFolderPtr = std::shared_ptr<InstalledFolder>;
 
 }
 
