@@ -43,6 +43,8 @@ namespace tc
         void ScanHeaderImageInAppCache();
         bool FindRunningExes(const std::shared_ptr<SteamApp>& app);
         bool IgnoreByPolicy(const std::string& path);
+        std::string EstimateEngine(const std::shared_ptr<SteamApp>& app);
+        bool ExeFilter(const std::string& lowcase_exe_name);
 
     private:
         std::string installed_steam_path_;

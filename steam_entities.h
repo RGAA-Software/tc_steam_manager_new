@@ -38,6 +38,8 @@ namespace tc
         std::string cover_url_;
         // cover's name
         std::string cover_name_;
+        //
+        std::string engine_type_;
 
     public:
 

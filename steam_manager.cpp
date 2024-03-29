@@ -10,6 +10,7 @@
 #include "tc_common_new/vdf_parser.hpp"
 #include "tc_common_new/string_ext.h"
 #include "tc_common_new/file_ext.h"
+#include "tc_common_new/folder_util.h"
 
 #include <map>
 #include <ranges>
@@ -179,14 +180,13 @@ namespace tc
         installed_steam_path_ = ScanInstalledSteamPath();
         steam_app_base_path_ = L"SOFTWARE\\Valve\\Steam\\Apps";
 
-#if 1
         HKEY hkey;
         if (::RegOpenKeyEx(HKEY_CURRENT_USER, steam_app_base_path_.c_str(), 0, KEY_READ, &hkey) ==
             ERROR_SUCCESS) {
             QueryInstalledApps(hkey);
         }
         ::RegCloseKey(hkey);
-#endif
+
         ParseLibraryFolders();
         ParseConfigForEachGame();
         ScanHeaderImageInAppCache();
@@ -338,10 +338,12 @@ namespace tc
                 steam_app->installed_dir_ = installed_dir;
                 steam_app->steam_url_ = std::format("steam://rungameid/{}", app->app_id_);
 
-                LOGI("will find: {}, name: {}", app->app_id_, steam_app->name_);
-                if (!FindRunningExes(steam_app)) {
-                    continue;
-                }
+                EstimateEngine(steam_app);
+
+//                LOGI("will find: {}, name: {}", app->app_id_, steam_app->name_);
+//                if (!FindRunningExes(steam_app)) {
+//                    continue;
+//                }
 
                 //LOGI("game: {}", steam_app.Dump());
                 games_.push_back(steam_app);
@@ -409,8 +411,6 @@ namespace tc
             if (!entry.is_regular_file()) {
                 continue;
             }
-
-            LOGI("path: {}", path.string());
             cached_file_names.push_back(path.string());
         }
 
@@ -453,6 +453,124 @@ namespace tc
 
     std::string SteamManager::GetSteamImageCachePath() {
         return installed_steam_path_ + "/appcache/librarycache";
+    }
+
+    std::string SteamManager::EstimateEngine(const std::shared_ptr<SteamApp>& app) {
+        std::vector<std::string> lower_case_exe_names;
+        std::vector<std::string> lower_case_folder_names;
+        std::vector<VisitResult> file_results;
+        std::vector<VisitResult> folder_results;
+
+        LOGI(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+        FolderUtil::VisitFiles(app->installed_dir_, [&](VisitResult&& r) {
+            auto lc_name = StringExt::ToUTF8(r.name_);
+            StringExt::ToLower(lc_name);
+            // 不被过滤的才会留下
+            if (!ExeFilter(lc_name)) {
+                lower_case_exe_names.push_back(lc_name);
+                file_results.push_back(r);
+                LOGI("FILE: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
+            }
+        }, "exe");
+
+        FolderUtil::VisitFolders(app->installed_dir_, [&](VisitResult&& r) {
+            auto lc_name = StringExt::ToUTF8(r.name_);
+            StringExt::ToLower(lc_name);
+            LOGI("FOLDER: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
+            lower_case_folder_names.push_back(lc_name);
+            folder_results.push_back(r);
+        });
+
+        bool is_unity = false;
+        // 1. if has unitycrashhandler or not
+        for (auto& n : lower_case_exe_names) {
+            if (n.find("unity") != std::string::npos) {
+                is_unity = true;
+                LOGI("=====> UNITY 1");
+            }
+        }
+
+        // 2. check folder name
+        if (!is_unity) {
+            for (auto& n : lower_case_exe_names) {
+                auto fname = FileExt::GetFileNameFromPathNoSuffix(n);
+                LOGI("fname: {}", fname);
+                auto target_folder = fname + "_data";
+                for (auto &f: lower_case_folder_names) {
+                    if (f == target_folder) {
+                        is_unity = true;
+                        LOGI("=====> UNITY 2");
+                    }
+                }
+            }
+        }
+
+        if (is_unity) {
+            LOGI("Finally , this is a unity game.");
+            for (auto& r : file_results) {
+                app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
+                app->exes_.push_back(StringExt::ToUTF8(r.path_));
+            }
+            app->engine_type_ = "UNITY";
+            return app->engine_type_;
+        }
+
+        // 3. match folder and exe name, see if ue or not
+        bool has_engine_folder = false;
+        bool has_same_name_folder = false;
+        std::string target_lowercase_folder_name;
+        for (auto& n : lower_case_exe_names) {
+            for (auto& f : lower_case_folder_names) {
+                if (f == "engine") {
+                    has_engine_folder = true;
+                }
+                auto fname = FileExt::GetFileNameFromPathNoSuffix(n);
+                if (fname == f) {
+                    has_same_name_folder = true;
+                    target_lowercase_folder_name = f;
+                }
+            }
+        }
+
+        bool is_ue = false;
+        if (has_engine_folder && has_same_name_folder) {
+            LOGI("It seems that this is a ue game, but we need another check.");
+            for (auto& r : folder_results) {
+                auto lowercase_folder_name = StringExt::ToLowerCpy(StringExt::ToUTF8(r.name_));
+                if (lowercase_folder_name == target_lowercase_folder_name) {
+                    LOGI("find the game folder: {}", StringExt::ToUTF8(r.path_));
+                    auto target_exe_folder = StringExt::ToUTF8(r.path_ + L"/Binaries/Win64");
+                    FolderUtil::VisitFiles(target_exe_folder, [&](VisitResult&& r) {
+                        LOGI("Visit target folder: {}", StringExt::ToUTF8(r.path_));
+
+                        app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
+                        app->exes_.push_back(StringExt::ToUTF8(r.path_));
+
+                        is_ue = true;
+                    }, "exe");
+                }
+            }
+        }
+        if (is_ue) {
+            app->engine_type_ = "UE";
+            return app->engine_type_;
+        }
+
+        return "UNKNOWN";
+    }
+
+    // 过滤掉不想要的
+    bool SteamManager::ExeFilter(const std::string& lowcase_exe_name) {
+        static std::vector<std::string> names = {
+            "crashhandler", "ffmpeg", "ffprobe", "qtwebengine", "vc_redist",
+            "uninstall", "crashpad"
+        };
+        for (auto& n : names) {
+            if (lowcase_exe_name.find(n) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }
