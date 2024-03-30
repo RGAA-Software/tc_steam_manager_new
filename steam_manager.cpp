@@ -328,6 +328,12 @@ namespace tc
                     continue;
                 }
 
+                std::string name = objs.attribs["name"];
+                StringExt::ToLower(name);
+                if (NameFilter(name)) {
+                    continue;
+                }
+
                 auto installed_dir_name = objs.attribs["installdir"];
                 auto installed_dir = steam_apps_path;
                 installed_dir.append("/common/").append(installed_dir_name);
@@ -556,6 +562,20 @@ namespace tc
             return app->engine_type_;
         }
 
+        if (file_results.empty()) {
+            // we don't know the engine of the game, so to find exes and close them when stream is closed
+            FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 2, [&](VisitResult &&r) {
+                LOGI("// path: {}", StringExt::ToUTF8(r.path_));
+                file_results.push_back(r);
+            }, "exe");
+        }
+        app->engine_type_ = "UNKNOWN";
+        for (auto& r : file_results) {
+            app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
+            app->exes_.push_back(StringExt::ToUTF8(r.path_));
+        }
+
+
         return "UNKNOWN";
     }
 
@@ -567,6 +587,18 @@ namespace tc
         };
         for (auto& n : names) {
             if (lowcase_exe_name.find(n) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool SteamManager::NameFilter(const std::string& lowcase_name) {
+        static std::vector<std::string> names = {
+            "steamworks"
+        };
+        for (auto& n : names) {
+            if (lowcase_name.find(n) != std::string::npos) {
                 return true;
             }
         }

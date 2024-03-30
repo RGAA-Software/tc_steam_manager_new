@@ -44,7 +44,10 @@ namespace tc
         bool FindRunningExes(const std::shared_ptr<SteamApp>& app);
         bool IgnoreByPolicy(const std::string& path);
         std::string EstimateEngine(const std::shared_ptr<SteamApp>& app);
+        // 过滤不要的exe
         bool ExeFilter(const std::string& lowcase_exe_name);
+        // 过滤不要的游戏名字
+        bool NameFilter(const std::string& lowcase_name);
 
     private:
         std::string installed_steam_path_;
