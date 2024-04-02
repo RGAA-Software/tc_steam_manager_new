@@ -564,7 +564,7 @@ namespace tc
 
         if (file_results.empty()) {
             // we don't know the engine of the game, so to find exes and close them when stream is closed
-            FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 2, [&](VisitResult &&r) {
+            FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 0, [&](VisitResult &&r) {
                 LOGI("// path: {}", StringExt::ToUTF8(r.path_));
                 file_results.push_back(r);
             }, "exe");
