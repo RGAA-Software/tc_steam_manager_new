@@ -461,6 +461,10 @@ namespace tc
         return installed_steam_path_ + "/appcache/librarycache";
     }
 
+    std::string SteamManager::GetSteamExePath() {
+        return installed_steam_path_ + "/steam.exe";
+    }
+
     std::string SteamManager::EstimateEngine(const std::shared_ptr<SteamApp>& app) {
         std::vector<std::string> lower_case_exe_names;
         std::vector<std::string> lower_case_folder_names;
