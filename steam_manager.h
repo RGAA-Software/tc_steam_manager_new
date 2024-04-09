@@ -34,6 +34,7 @@ namespace tc
         void UpdateAppDetails();
         std::string GetSteamInstalledPath();
         std::string GetSteamImageCachePath();
+        std::string GetSteamExePath();
 
     private:
         std::string ScanInstalledSteamPath();
