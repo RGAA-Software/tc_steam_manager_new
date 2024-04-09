@@ -8,6 +8,7 @@
 #include <sstream>
 #include <memory>
 #include <vector>
+#include <any>
 
 namespace tc
 {
@@ -41,6 +42,8 @@ namespace tc
         //
         std::string engine_type_;
 
+        std::any cover_pixmap_;
+
     public:
 
         [[nodiscard]] std::string Dump() const {
@@ -49,6 +52,7 @@ namespace tc
             ss << "app id: " << app_id_ << std::endl;
             ss << "installed dir: " << installed_dir_ << std::endl;
             ss << "exe size: " << exes_.size() << std::endl;
+            ss << "cover url: " << cover_url_ << std::endl;
             for (auto& exe : exes_) {
                 ss << "  - " << exe << std::endl;
             }
