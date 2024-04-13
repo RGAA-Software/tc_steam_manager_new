@@ -210,7 +210,8 @@ namespace tc
         if (RegOpenKeyExW(HKEY_CURRENT_USER, subKey, 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
             if (RegGetValueW(hKey, nullptr, valueName, RRF_RT_REG_SZ, nullptr, buffer, &bufferSize) == ERROR_SUCCESS) {
                 RegCloseKey(hKey);
-                return StringExt::ToUTF8(buffer);
+                installed_steam_path_ =  StringExt::ToUTF8(buffer);
+                return installed_steam_path_;
             }
             RegCloseKey(hKey);
         }

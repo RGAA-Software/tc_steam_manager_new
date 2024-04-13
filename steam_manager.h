@@ -36,8 +36,9 @@ namespace tc
         std::string GetSteamImageCachePath();
         std::string GetSteamExePath();
 
-    private:
         std::string ScanInstalledSteamPath();
+
+    private:
         void QueryInstalledApps(HKEY key);
         void ParseLibraryFolders();
         void ParseConfigForEachGame();
