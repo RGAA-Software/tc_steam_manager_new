@@ -480,14 +480,14 @@ namespace tc
             if (!ExeFilter(lc_name)) {
                 lower_case_exe_names.push_back(lc_name);
                 file_results.push_back(r);
-                LOGI("FILE: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
+                //LOGI("FILE: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
             }
         }, "exe");
 
         FolderUtil::VisitFolders(app->installed_dir_, [&](VisitResult&& r) {
             auto lc_name = StringExt::ToUTF8(r.name_);
             StringExt::ToLower(lc_name);
-            LOGI("FOLDER: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
+            //LOGI("FOLDER: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
             lower_case_folder_names.push_back(lc_name);
             folder_results.push_back(r);
         });
