@@ -53,8 +53,13 @@ namespace tc
             ss << "installed dir: " << installed_dir_ << std::endl;
             ss << "exe size: " << exes_.size() << std::endl;
             ss << "cover url: " << cover_url_ << std::endl;
+            ss << "exes:" << std::endl;
             for (auto& exe : exes_) {
                 ss << "  - " << exe << std::endl;
+            }
+            ss << "exe names: " << std::endl;
+            for (auto& n : exe_names_) {
+                ss << "  * " << n << std::endl;
             }
             return ss.str();
         }
