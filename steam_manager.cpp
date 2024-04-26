@@ -612,4 +612,17 @@ namespace tc
         return false;
     }
 
+    bool SteamManager::IsSteamPath(const std::string& path) {
+        std::string prefix = "steam://rungameid/";
+        return path.starts_with(prefix);
+    }
+
+    std::string SteamManager::ParseSteamIdFromPath(const std::string& game_path) {
+        std::string prefix = "steam://rungameid/";
+        if (!game_path.starts_with(prefix)) {
+            return "";
+        }
+        return game_path.substr(prefix.size(), game_path.size());
+    }
+
 }
