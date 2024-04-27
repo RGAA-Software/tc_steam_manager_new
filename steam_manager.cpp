@@ -568,13 +568,12 @@ namespace tc
         }
 
         LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
-        if (file_results.empty()) {
-            // we don't know the engine of the game, so to find exes and close them when stream is closed
-            FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
-                LOGI("// path: {}", StringExt::ToUTF8(r.path_));
-                file_results.push_back(r);
-            }, "exe");
-        }
+        // we don't know the engine of the game, so to find exes and will close them when stream is closed
+        FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
+            LOGI("// path: {}", StringExt::ToUTF8(r.path_));
+            file_results.push_back(r);
+        }, "exe");
+
         app->engine_type_ = "UNKNOWN";
         for (auto& r : file_results) {
             app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
