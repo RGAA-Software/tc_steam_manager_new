@@ -571,6 +571,7 @@ namespace tc
         // we don't know the engine of the game, so to find exes and will close them when stream is closed
         FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
             LOGI("// path: {}", StringExt::ToUTF8(r.path_));
+            // TODO: 如果已经存在，则不添加
             file_results.push_back(r);
         }, "exe");
 
