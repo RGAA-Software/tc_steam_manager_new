@@ -570,9 +570,23 @@ namespace tc
         LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
         // we don't know the engine of the game, so to find exes and will close them when stream is closed
         FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
-            LOGI("// path: {}", StringExt::ToUTF8(r.path_));
-            // TODO: 如果已经存在，则不添加
-            file_results.push_back(r);
+            auto path = StringExt::ToUTF8(r.path_);
+            StringExt::Replace(path, "\\", "/");
+            LOGI("// path: {}", path);
+            bool already_exist = false;
+            for (const auto& file_result : file_results) {
+                auto file_path = StringExt::ToUTF8(file_result.path_);
+                StringExt::Replace(file_path, "\\", "/");
+                if (file_path == path) {
+                    LOGI("Already exist: {}", file_path);
+                    already_exist = true;
+                }
+            }
+            if (!already_exist) {
+                LOGI("Not exist, add to file results");
+                file_results.push_back(r);
+            }
+
         }, "exe");
 
         app->engine_type_ = "UNKNOWN";
@@ -580,7 +594,6 @@ namespace tc
             app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
             app->exes_.push_back(StringExt::ToUTF8(r.path_));
         }
-
 
         return "UNKNOWN";
     }
