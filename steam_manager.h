@@ -28,7 +28,7 @@ namespace tc
         explicit SteamManager(const std::shared_ptr<TaskRuntime>& rt);
         ~SteamManager();
 
-        bool ScanInstalledGames();
+        bool ScanInstalledGames(bool recursive_exe);
         std::vector<std::shared_ptr<SteamApp>> GetInstalledGames();
         void DumpGamesInfo();
         void UpdateAppDetails();
@@ -36,6 +36,7 @@ namespace tc
         std::string GetSteamImageCachePath();
         std::string GetSteamExePath();
         std::string ScanInstalledSteamPath();
+        void RescanRecursively();
         // steam://xx/xxx
         static bool IsSteamPath(const std::string& path);
         // parse steam id from steam://xxxx/xxx
@@ -44,15 +45,13 @@ namespace tc
     private:
         void QueryInstalledApps(HKEY key);
         void ParseLibraryFolders();
-        void ParseConfigForEachGame();
+        void ParseConfigForEachGame(bool recursive_exe);
         void ScanHeaderImageInAppCache();
-        bool FindRunningExes(const std::shared_ptr<SteamApp>& app);
-        bool IgnoreByPolicy(const std::string& path);
-        std::string EstimateEngine(const std::shared_ptr<SteamApp>& app);
+        std::string EstimateEngine(const std::shared_ptr<SteamApp>& app, bool recursive_exe);
         // 过滤不要的exe
-        bool ExeFilter(const std::string& lowcase_exe_name);
+        bool ExeFilter(const std::string& lowercase_exe_name);
         // 过滤不要的游戏名字
-        bool NameFilter(const std::string& lowcase_name);
+        bool NameFilter(const std::string& lowercase_name);
 
     private:
         std::string installed_steam_path_;
@@ -61,7 +60,7 @@ namespace tc
         std::vector<std::shared_ptr<SteamApp>> games_;
         std::vector<std::shared_ptr<InstalledFolder>> installed_folders_;
         std::shared_ptr<TaskRuntime> task_runtime_ = nullptr;
-        bool scan_recursive_ = false;
+
     };
 
 }

@@ -16,6 +16,7 @@
 #include <ranges>
 #include <Windows.h>
 #include <boost/filesystem.hpp>
+#include <boost/algorithm/string.hpp>
 #include <filesystem>
 
 #include "steam_entities.h"
@@ -63,7 +64,7 @@ namespace tc
                 hKey,                    // key handle
                 achClass,                // buffer for class name
                 &cchClassName,           // size of class string
-                NULL,                    // reserved
+                nullptr,                    // reserved
                 &cSubKeys,               // number of subkeys
                 &cbMaxSubKey,            // longest subkey size
                 &cchMaxClass,            // longest class string
@@ -79,17 +80,9 @@ namespace tc
 
         // Enumerate the subkeys, until RegEnumKeyEx fails.
         if (cSubKeys) {
-            printf("\nNumber of subkeys: %d\n", cSubKeys);
-
             for (i = 0; i < cSubKeys; i++) {
                 cbName = MAX_KEY_LENGTH;
-                retCode = ::RegEnumKeyEx(hKey, i,
-                                         achKey,
-                                         &cbName,
-                                         NULL,
-                                         NULL,
-                                         NULL,
-                                         &ftLastWriteTime);
+                retCode = ::RegEnumKeyEx(hKey, i, achKey, &cbName, nullptr, nullptr, nullptr, &ftLastWriteTime);
 
                 if (retCode == ERROR_SUCCESS) {
 
@@ -106,8 +99,7 @@ namespace tc
                             wchar_t nameValue[MAX_PATH] = L"Name";
                             DWORD bufferSize = MAX_PATH * sizeof(wchar_t);
                             wchar_t buffer[MAX_PATH] = {0};
-                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_SZ, nullptr, buffer,
-                                             &bufferSize) == ERROR_SUCCESS) {
+                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_SZ, nullptr, buffer, &bufferSize) == ERROR_SUCCESS) {
                                 std::wcout << "Game name: " << buffer << std::endl;
                             }
                         }
@@ -116,8 +108,7 @@ namespace tc
                             wchar_t nameValue[MAX_PATH] = L"Installed";
                             DWORD data = 0;
                             DWORD dataSize = sizeof(DWORD);
-                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data,
-                                             &dataSize) == ERROR_SUCCESS) {
+                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data, &dataSize) == ERROR_SUCCESS) {
                                 std::wcout << "Installed : " << data << std::endl;
                                 reg_app_info->installed_ = data;
                             }
@@ -127,8 +118,7 @@ namespace tc
                             wchar_t nameValue[MAX_PATH] = L"Running";
                             DWORD data = 0;
                             DWORD dataSize = sizeof(DWORD);
-                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data,
-                                             &dataSize) == ERROR_SUCCESS) {
+                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data, &dataSize) == ERROR_SUCCESS) {
                                 std::wcout << "Running : " << data << std::endl;
                                 reg_app_info->running_ = data;
                             }
@@ -138,8 +128,7 @@ namespace tc
                             wchar_t nameValue[MAX_PATH] = L"Updating";
                             DWORD data = 0;
                             DWORD dataSize = sizeof(DWORD);
-                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data,
-                                             &dataSize) == ERROR_SUCCESS) {
+                            if (RegGetValueW(innerKey, nullptr, nameValue, RRF_RT_REG_DWORD, nullptr, &data, &dataSize) == ERROR_SUCCESS) {
                                 std::wcout << "updating : " << data << std::endl;
                             }
                         }
@@ -154,21 +143,11 @@ namespace tc
         }
 
         // Enumerate the key values.
-
         if (cValues) {
-            printf("\nNumber of values: %d\n", cValues);
-
             for (i = 0; i < cValues; i++) {
                 cchValue = MAX_VALUE_NAME;
                 achValue[0] = '\0';
-                retCode = ::RegEnumValue(hKey, i,
-                                         achValue,
-                                         &cchValue,
-                                         NULL,
-                                         NULL,
-                                         NULL,
-                                         NULL);
-
+                retCode = ::RegEnumValue(hKey, i, achValue, &cchValue, nullptr, nullptr, nullptr, nullptr);
                 if (retCode == ERROR_SUCCESS) {
                     printf(("(%d) %s\n"), i + 1, achValue);
                 }
@@ -176,26 +155,25 @@ namespace tc
         }
     }
 
-    bool SteamManager::ScanInstalledGames() {
+    bool SteamManager::ScanInstalledGames(bool recursive_exe) {
         installed_steam_path_ = ScanInstalledSteamPath();
         steam_app_base_path_ = L"SOFTWARE\\Valve\\Steam\\Apps";
 
         HKEY hkey;
-        if (::RegOpenKeyEx(HKEY_CURRENT_USER, steam_app_base_path_.c_str(), 0, KEY_READ, &hkey) ==
-            ERROR_SUCCESS) {
+        if (::RegOpenKeyEx(HKEY_CURRENT_USER, steam_app_base_path_.c_str(), 0, KEY_READ, &hkey) == ERROR_SUCCESS) {
             QueryInstalledApps(hkey);
         }
         ::RegCloseKey(hkey);
 
         ParseLibraryFolders();
-        ParseConfigForEachGame();
+        ParseConfigForEachGame(recursive_exe);
         ScanHeaderImageInAppCache();
 
         LOGI("-----------------------------------------------Finally-----------------------------------------");
         LOGI("steam path: {}", installed_steam_path_);
         LOGI("all steam apps size: {}", games_.size());
         for (auto& game : games_) {
-            LOGI("game: \n{}", game->Dump());
+            LOGI("game:\n {}", game->Dump());
         }
         return true;
     }
@@ -215,7 +193,6 @@ namespace tc
             }
             RegCloseKey(hKey);
         }
-
         return "";
     }
 
@@ -267,33 +244,14 @@ namespace tc
             auto installed_folder = InstalledFolder::Make();
             installed_folder->path_ = path;
 
-            // apps
-#if 0
-            for (auto& child : s->childs) {
-                if (child.first != "apps") {
-                    continue;
-                }
-                for (auto& app : child.second->attribs) {
-                    LOGI("{} => {}", app.first, app.second);
-                    installed_folder.app_id_value_.push_back(RegAppInfo {
-                            .app_id_ = std::atoi(app.first.c_str()),
-                            .app_size_ = std::atoi(app.second.c_str()),
-                    });
-                }
-            }
-#endif
             // 读取这个地方不准，把注册表里的都拿出来，如果安装在不同磁盘，每个磁盘都把所有的app文件夹都检测一次
             // 最后只保留检测到的就可以
             installed_folder->app_id_value_.insert(installed_folder->app_id_value_.begin(), reg_apps_info_.begin(), reg_apps_info_.end());
             installed_folders_.push_back(installed_folder);
         }
-
-//        std::ofstream config_back(path);
-//        tyti::vdf::write(config_back, objs);
-//        config_back.close();
     }
 
-    void SteamManager::ParseConfigForEachGame() {
+    void SteamManager::ParseConfigForEachGame(bool recursive_exe) {
         for (const auto& folder : installed_folders_) {
             if (folder->path_.empty() || folder->app_id_value_.empty()) {
                 continue;
@@ -345,13 +303,7 @@ namespace tc
                 steam_app->installed_dir_ = installed_dir;
                 steam_app->steam_url_ = std::format("steam://rungameid/{}", app->app_id_);
 
-                EstimateEngine(steam_app);
-
-//                LOGI("will find: {}, name: {}", app->app_id_, steam_app->name_);
-//                if (!FindRunningExes(steam_app)) {
-//                    continue;
-//                }
-
+                EstimateEngine(steam_app, recursive_exe);
                 //LOGI("game: {}", steam_app.Dump());
                 games_.push_back(steam_app);
             }
@@ -359,53 +311,7 @@ namespace tc
         LOGI("---Parse completed....");
     }
 
-    bool SteamManager::FindRunningExes(const SteamAppPtr& app) {
-        auto app_path = std::filesystem::u8path(app->installed_dir_);
-        if (!std::filesystem::exists(app_path)) {
-            LOGE("folder not exist: {}", app->installed_dir_);
-            return false;
-        }
-
-        bool find_exe = false;
-        std::filesystem::directory_iterator end_iter;
-        for (std::filesystem::directory_iterator iter(app_path); iter != end_iter; iter++) {
-            if (std::filesystem::is_directory(*iter)) {
-                continue;
-            }
-
-            auto path = iter->path().wstring();
-            auto u8path = StringExt::ToUTF8(path);
-            StringExt::Replace(u8path, "\\", "/");
-            auto suffix = FileExt::GetFileSuffix(u8path);
-            if (suffix.empty()) {
-                continue;
-            }
-            bool is_exe = StringExt::ToLowerCpy(suffix) == "exe";
-            bool ignore_by_policy = IgnoreByPolicy(u8path);
-            if (is_exe && !ignore_by_policy) {
-                app->exes_.push_back(u8path);
-                std::cout << "find exe: " << u8path << std::endl;
-                auto exe_name = FileExt::GetFileNameFromPath(u8path);
-                app->exe_names_.push_back(exe_name);
-                find_exe = true;
-            }
-        }
-        return find_exe;
-    }
-
-    bool SteamManager::IgnoreByPolicy(const std::string& path) {
-        auto name_no_suffix = StringExt::ToLowerCpy(FileExt::GetFileNameFromPathNoSuffix(path));
-        auto filter_names = {"crashhandler", "ffmpeg", "ffprobe", "qtwebengine", "vc_redist",
-             "uninstall", "crashpad"
-        };
-        auto find = std::ranges::any_of(filter_names, [&name_no_suffix](const std::string& name) {
-            return boost::algorithm::contains(name_no_suffix, name);
-        });
-        return find;
-    }
-
     void SteamManager::ScanHeaderImageInAppCache() {
-#if 1
         std::string library_cache_path = installed_steam_path_ + "/appcache/librarycache";
         if (!std::filesystem::exists(library_cache_path)) {
             LOGE("Cache not exist:{}", library_cache_path);
@@ -438,11 +344,9 @@ namespace tc
                 }
             }
         }
-#endif
     }
 
     void SteamManager::UpdateAppDetails() {
-#if 1
         task_runtime_->Post(SimpleThreadTask::Make([=, this]() {
             for (auto& game : games_) {
                 auto path = kApiAppDetails + "?appids=" + std::to_string(game->app_id_);
@@ -451,7 +355,6 @@ namespace tc
                 LOGI("resp : {} {}", resp.status, resp.body);
             }
         }));
-#endif
     }
 
     std::string SteamManager::GetSteamInstalledPath() {
@@ -466,13 +369,13 @@ namespace tc
         return installed_steam_path_ + "/steam.exe";
     }
 
-    std::string SteamManager::EstimateEngine(const std::shared_ptr<SteamApp>& app) {
+    std::string SteamManager::EstimateEngine(const std::shared_ptr<SteamApp>& app, bool recursive) {
         std::vector<std::string> lower_case_exe_names;
         std::vector<std::string> lower_case_folder_names;
         std::vector<VisitResult> file_results;
         std::vector<VisitResult> folder_results;
 
-        LOGI(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -");
+        LOGI(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - recursive: {}", recursive);
         FolderUtil::VisitFiles(app->installed_dir_, [&](VisitResult&& r) {
             auto lc_name = StringExt::ToUTF8(r.name_);
             StringExt::ToLower(lc_name);
@@ -480,14 +383,12 @@ namespace tc
             if (!ExeFilter(lc_name)) {
                 lower_case_exe_names.push_back(lc_name);
                 file_results.push_back(r);
-                //LOGI("FILE: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
             }
         }, "exe");
 
         FolderUtil::VisitFolders(app->installed_dir_, [&](VisitResult&& r) {
             auto lc_name = StringExt::ToUTF8(r.name_);
             StringExt::ToLower(lc_name);
-            //LOGI("FOLDER: {} -- {}", lc_name, StringExt::ToUTF8(r.path_));
             lower_case_folder_names.push_back(lc_name);
             folder_results.push_back(r);
         });
@@ -504,9 +405,9 @@ namespace tc
         // 2. check folder name
         if (!is_unity) {
             for (auto& n : lower_case_exe_names) {
-                auto fname = FileExt::GetFileNameFromPathNoSuffix(n);
-                LOGI("fname: {}", fname);
-                auto target_folder = fname + "_data";
+                auto filename = FileExt::GetFileNameFromPathNoSuffix(n);
+                LOGI("filename: {}", filename);
+                auto target_folder = filename + "_data";
                 for (auto &f: lower_case_folder_names) {
                     if (f == target_folder) {
                         is_unity = true;
@@ -535,8 +436,8 @@ namespace tc
                 if (f == "engine") {
                     has_engine_folder = true;
                 }
-                auto fname = FileExt::GetFileNameFromPathNoSuffix(n);
-                if (fname == f) {
+                auto filename = FileExt::GetFileNameFromPathNoSuffix(n);
+                if (filename == f) {
                     has_same_name_folder = true;
                     target_lowercase_folder_name = f;
                 }
@@ -553,10 +454,14 @@ namespace tc
                     auto target_exe_folder = StringExt::ToUTF8(r.path_ + L"/Binaries/Win64");
                     FolderUtil::VisitFiles(target_exe_folder, [&](VisitResult&& r) {
                         LOGI("Visit target folder: {}", StringExt::ToUTF8(r.path_));
-
-                        app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
-                        app->exes_.push_back(StringExt::ToUTF8(r.path_));
-
+                        auto target_exe_name = StringExt::ToUTF8(r.name_);
+                        auto target_exe = StringExt::ToUTF8(r.path_);
+                        if (std::find(app->exe_names_.begin(), app->exe_names_.end(), target_exe_name) == app->exe_names_.end()) {
+                            app->exe_names_.push_back(target_exe_name);
+                        }
+                        if (std::find(app->exes_.begin(), app->exes_.end(), target_exe) == app->exe_names_.end()) {
+                            app->exes_.push_back(target_exe);
+                        }
                         is_ue = true;
                     }, "exe");
                 }
@@ -569,7 +474,7 @@ namespace tc
 
         LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
         // we don't know the engine of the game, so to find exes and will close them when stream is closed
-        if (scan_recursive_) {
+        if (recursive) {
             FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
                 auto path = StringExt::ToUTF8(r.path_);
                 StringExt::Replace(path, "\\", "/");
@@ -601,26 +506,26 @@ namespace tc
     }
 
     // 过滤掉不想要的
-    bool SteamManager::ExeFilter(const std::string& lowcase_exe_name) {
+    bool SteamManager::ExeFilter(const std::string& lowercase_exe_name) {
         static std::vector<std::string> names = {
             "crashhandler", "ffmpeg", "ffprobe", "qtwebengine", "vc_redist",
             "uninstall", "crashpad", "crashdialog", "crashsender", "unitycrashhandler"
         };
         for (auto& n : names) {
             auto ln = StringExt::ToLowerCpy(n);
-            if (lowcase_exe_name.find(ln) != std::string::npos) {
+            if (lowercase_exe_name.find(ln) != std::string::npos) {
                 return true;
             }
         }
         return false;
     }
 
-    bool SteamManager::NameFilter(const std::string& lowcase_name) {
+    bool SteamManager::NameFilter(const std::string& lowercase_name) {
         static std::vector<std::string> names = {
             "steamworks"
         };
         for (auto& n : names) {
-            if (lowcase_name.find(n) != std::string::npos) {
+            if (lowercase_name.find(n) != std::string::npos) {
                 return true;
             }
         }
@@ -638,6 +543,12 @@ namespace tc
             return "";
         }
         return game_path.substr(prefix.size(), game_path.size());
+    }
+
+    void SteamManager::RescanRecursively() {
+        for (auto& game : games_) {
+            EstimateEngine(game, true);
+        }
     }
 
 }
