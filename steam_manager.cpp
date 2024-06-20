@@ -569,25 +569,27 @@ namespace tc
 
         LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
         // we don't know the engine of the game, so to find exes and will close them when stream is closed
-        FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
-            auto path = StringExt::ToUTF8(r.path_);
-            StringExt::Replace(path, "\\", "/");
-            LOGI("// path: {}", path);
-            bool already_exist = false;
-            for (const auto& file_result : file_results) {
-                auto file_path = StringExt::ToUTF8(file_result.path_);
-                StringExt::Replace(file_path, "\\", "/");
-                if (file_path == path) {
-                    LOGI("Already exist: {}", file_path);
-                    already_exist = true;
+        if (scan_recursive_) {
+            FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
+                auto path = StringExt::ToUTF8(r.path_);
+                StringExt::Replace(path, "\\", "/");
+                LOGI("// path: {}", path);
+                bool already_exist = false;
+                for (const auto &file_result: file_results) {
+                    auto file_path = StringExt::ToUTF8(file_result.path_);
+                    StringExt::Replace(file_path, "\\", "/");
+                    if (file_path == path) {
+                        LOGI("Already exist: {}", file_path);
+                        already_exist = true;
+                    }
                 }
-            }
-            if (!already_exist) {
-                LOGI("Not exist, add to file results");
-                file_results.push_back(r);
-            }
+                if (!already_exist) {
+                    LOGI("Not exist, add to file results");
+                    file_results.push_back(r);
+                }
 
-        }, "exe");
+            }, "exe");
+        }
 
         app->engine_type_ = "UNKNOWN";
         for (auto& r : file_results) {

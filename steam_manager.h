@@ -61,6 +61,7 @@ namespace tc
         std::vector<std::shared_ptr<SteamApp>> games_;
         std::vector<std::shared_ptr<InstalledFolder>> installed_folders_;
         std::shared_ptr<TaskRuntime> task_runtime_ = nullptr;
+        bool scan_recursive_ = false;
     };
 
 }
