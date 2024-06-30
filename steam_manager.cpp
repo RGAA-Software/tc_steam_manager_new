@@ -15,8 +15,6 @@
 #include <map>
 #include <ranges>
 #include <Windows.h>
-#include <boost/filesystem.hpp>
-#include <boost/algorithm/string.hpp>
 #include <filesystem>
 
 #include "steam_entities.h"
