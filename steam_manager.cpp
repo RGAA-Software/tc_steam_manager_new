@@ -86,7 +86,7 @@ namespace tc
 
                     auto reg_app_info = RegAppInfo::Make();
                     reg_app_info->app_id_ = std::atoi(StringExt::ToUTF8(std::wstring(achKey)).c_str());
-                    LOGI("Reg: id:{}", reg_app_info->app_id_);
+                    //LOGI("Reg: id:{}", reg_app_info->app_id_);
 
                     std::wstring name;
                     auto innerSubKey = steam_app_base_path_ + L"\\" + std::wstring(achKey);
@@ -167,12 +167,14 @@ namespace tc
         ParseConfigForEachGame(recursive_exe);
         ScanHeaderImageInAppCache();
 
+#if 0
         LOGI("-----------------------------------------------Finally-----------------------------------------");
         LOGI("steam path: {}", installed_steam_path_);
         LOGI("all steam apps size: {}", games_.size());
         for (auto& game : games_) {
             LOGI("game:\n {}", game->Dump());
         }
+#endif
         return true;
     }
 
@@ -228,7 +230,7 @@ namespace tc
         }
 
         for (auto& c : objs.childs) {
-            LOGI("key: {}", c.first);
+            //LOGI("key: {}", c.first);
             auto s = c.second;
             // path
             if (s->attribs.find("path") == s->attribs.end()) {
@@ -306,7 +308,7 @@ namespace tc
                 games_.push_back(steam_app);
             }
         }
-        LOGI("---Parse completed....");
+       // LOGI("---Parse completed....");
     }
 
     void SteamManager::ScanHeaderImageInAppCache() {
@@ -373,7 +375,7 @@ namespace tc
         std::vector<VisitResult> file_results;
         std::vector<VisitResult> folder_results;
 
-        LOGI(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - recursive: {}", recursive);
+        //LOGI(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - recursive: {}", recursive);
         FolderUtil::VisitFiles(app->installed_dir_, [&](VisitResult&& r) {
             auto lc_name = StringExt::ToUTF8(r.name_);
             StringExt::ToLower(lc_name);
@@ -404,19 +406,19 @@ namespace tc
         if (!is_unity) {
             for (auto& n : lower_case_exe_names) {
                 auto filename = FileExt::GetFileNameFromPathNoSuffix(n);
-                LOGI("filename: {}", filename);
+                //LOGI("filename: {}", filename);
                 auto target_folder = filename + "_data";
                 for (auto &f: lower_case_folder_names) {
                     if (f == target_folder) {
                         is_unity = true;
-                        LOGI("=====> UNITY 2");
+                        //LOGI("=====> UNITY 2");
                     }
                 }
             }
         }
 
         if (is_unity) {
-            LOGI("Finally , this is a unity game.");
+            //LOGI("Finally , this is a unity game.");
             for (auto& r : file_results) {
                 app->exe_names_.push_back(StringExt::ToUTF8(r.name_));
                 app->exes_.push_back(StringExt::ToUTF8(r.path_));
@@ -470,24 +472,24 @@ namespace tc
             return app->engine_type_;
         }
 
-        LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
+        //LOGI("=====> file results: {}, app name: {}", file_results.size(), app->name_);
         // we don't know the engine of the game, so to find exes and will close them when stream is closed
         if (recursive) {
             FolderUtil::VisitRecursiveFiles(std::filesystem::path(app->installed_dir_), 0, 3, [&](VisitResult &&r) {
                 auto path = StringExt::ToUTF8(r.path_);
                 StringExt::Replace(path, "\\", "/");
-                LOGI("// path: {}", path);
+                //LOGI("// path: {}", path);
                 bool already_exist = false;
                 for (const auto &file_result: file_results) {
                     auto file_path = StringExt::ToUTF8(file_result.path_);
                     StringExt::Replace(file_path, "\\", "/");
                     if (file_path == path) {
-                        LOGI("Already exist: {}", file_path);
+                        //LOGI("Already exist: {}", file_path);
                         already_exist = true;
                     }
                 }
                 if (!already_exist) {
-                    LOGI("Not exist, add to file results");
+                    //LOGI("Not exist, add to file results");
                     file_results.push_back(r);
                 }
 
@@ -503,7 +505,6 @@ namespace tc
         return "UNKNOWN";
     }
 
-    // 过滤掉不想要的
     bool SteamManager::ExeFilter(const std::string& lowercase_exe_name) {
         static std::vector<std::string> names = {
             "crashhandler", "ffmpeg", "ffprobe", "qtwebengine", "vc_redist",
