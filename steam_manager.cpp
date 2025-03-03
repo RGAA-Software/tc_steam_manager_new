@@ -28,12 +28,12 @@ namespace fs = std::filesystem;;
 namespace tc
 {
 
-    std::shared_ptr<SteamManager> SteamManager::Make(const std::shared_ptr<TaskRuntime>& rt) {
-        return std::make_shared<SteamManager>(rt);
+    std::shared_ptr<SteamManager> SteamManager::Make() {
+        return std::make_shared<SteamManager>();
     }
 
-    SteamManager::SteamManager(const std::shared_ptr<TaskRuntime>& rt) {
-        task_runtime_ = rt;
+    SteamManager::SteamManager() {
+
     }
 
     SteamManager::~SteamManager() = default;
@@ -346,15 +346,14 @@ namespace tc
         }
     }
 
+    // TODO:BACKGROUND
     void SteamManager::UpdateAppDetails() {
-        task_runtime_->Post(SimpleThreadTask::Make([=, this]() {
-            for (auto& game : games_) {
-                auto path = kApiAppDetails + "?appids=" + std::to_string(game->app_id_);
-                auto client = HttpClient::MakeSSL(kApiBase, path);
-                auto resp = client->Request({});
-                LOGI("resp : {} {}", resp.status, resp.body);
-            }
-        }));
+        for (auto& game : games_) {
+            auto path = kApiAppDetails + "?appids=" + std::to_string(game->app_id_);
+            auto client = HttpClient::MakeSSL(kApiBase, path);
+            auto resp = client->Request({});
+            LOGI("resp : {} {}", resp.status, resp.body);
+        }
     }
 
     std::string SteamManager::GetSteamInstalledPath() {

@@ -18,14 +18,13 @@ namespace tc
     class SteamApp;
     class InstalledFolder;
     class RegAppInfo;
-    class TaskRuntime;
 
     class SteamManager {
     public:
 
-        static std::shared_ptr<SteamManager> Make(const std::shared_ptr<TaskRuntime>& rt);
+        static std::shared_ptr<SteamManager> Make();
 
-        explicit SteamManager(const std::shared_ptr<TaskRuntime>& rt);
+        explicit SteamManager();
         ~SteamManager();
 
         bool ScanInstalledGames(bool recursive_exe);
@@ -59,7 +58,6 @@ namespace tc
         std::vector<std::shared_ptr<RegAppInfo>> reg_apps_info_;
         std::vector<std::shared_ptr<SteamApp>> games_;
         std::vector<std::shared_ptr<InstalledFolder>> installed_folders_;
-        std::shared_ptr<TaskRuntime> task_runtime_ = nullptr;
 
     };
 
