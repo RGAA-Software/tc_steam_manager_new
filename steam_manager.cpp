@@ -9,7 +9,7 @@
 #include "tc_common_new/thread.h"
 #include "tc_common_new/vdf_parser.hpp"
 #include "tc_common_new/string_ext.h"
-#include "tc_common_new/file_ext.h"
+#include "tc_common_new/file_util.h"
 #include "tc_common_new/folder_util.h"
 
 #include <map>
@@ -334,12 +334,12 @@ namespace tc
             for (auto& file_name : cached_file_names) {
                 if (file_name.find(file_prefix) != std::string::npos) {
                     game->cover_url_ = file_name;
-                    game->cover_name_ = FileExt::GetFileNameFromPath(file_name);
+                    game->cover_name_ = FileUtil::GetFileNameFromPath(file_name);
                     break;
                 }
                 if (file_name.find(file_prefix_2) != std::string::npos) {
                     game->cover_url_ = file_name;
-                    game->cover_name_ = FileExt::GetFileNameFromPath(file_name);
+                    game->cover_name_ = FileUtil::GetFileNameFromPath(file_name);
                     break;
                 }
             }
@@ -404,7 +404,7 @@ namespace tc
         // 2. check folder name
         if (!is_unity) {
             for (auto& n : lower_case_exe_names) {
-                auto filename = FileExt::GetFileNameFromPathNoSuffix(n);
+                auto filename = FileUtil::GetFileNameFromPathNoSuffix(n);
                 //LOGI("filename: {}", filename);
                 auto target_folder = filename + "_data";
                 for (auto &f: lower_case_folder_names) {
@@ -435,7 +435,7 @@ namespace tc
                 if (f == "engine") {
                     has_engine_folder = true;
                 }
-                auto filename = FileExt::GetFileNameFromPathNoSuffix(n);
+                auto filename = FileUtil::GetFileNameFromPathNoSuffix(n);
                 if (filename == f) {
                     has_same_name_folder = true;
                     target_lowercase_folder_name = f;
